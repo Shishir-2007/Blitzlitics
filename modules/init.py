@@ -1,1 +1,1 @@
-"""Blitzlitics data and analytics modules."""
+"""ANALYTIX data and analytics modules."""

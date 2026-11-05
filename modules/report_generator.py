@@ -133,7 +133,7 @@ def export_pdf(data, dataset_name, metrics, insights, quality, currency_symbol="
         leftMargin=0.65 * inch,
         topMargin=0.65 * inch,
         bottomMargin=0.65 * inch,
-        title=f"Blitzlitics report - {dataset_name}",
+        title=f"ANALYTIX report - {dataset_name}",
     )
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], textColor=colors.HexColor("#102a43")))
@@ -141,7 +141,7 @@ def export_pdf(data, dataset_name, metrics, insights, quality, currency_symbol="
     styles.add(ParagraphStyle(name="SmallBody", parent=styles["BodyText"], fontSize=8, leading=11, alignment=TA_LEFT))
 
     elements = [
-        Paragraph("Blitzlitics", styles["BrandTitle"]),
+        Paragraph("ANALYTIX", styles["BrandTitle"]),
         Paragraph(f"Business performance report: {escape(str(dataset_name))}", styles["Heading2"]),
         Paragraph(f"Records included: {len(data):,}", styles["BodyText"]),
     ]

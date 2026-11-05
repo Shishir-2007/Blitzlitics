@@ -1,6 +1,6 @@
-# Blitzlitics
+# ANALYTIX
 
-Blitzlitics is a Streamlit business intelligence dashboard built with Pandas, NumPy, and Plotly. Its premium, multi-page workspace includes a fictional sample dataset, CSV/Excel upload, data-quality checks, editable column mapping, interactive filters, grounded business insights, and CSV, Excel, and PDF reports.
+ANALYTIX is a premium Streamlit business intelligence dashboard built with Pandas, NumPy, and Plotly. Its multi-page workspace includes a fictional sample dataset, CSV/Excel upload, data-quality checks, editable column mapping, interactive filters, grounded business insights, and CSV, Excel, and PDF reports.
 
 ## Requirements
 
@@ -25,7 +25,7 @@ If PowerShell prevents environment activation, use the environment's Python dire
 .\.venv-compatible\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Run Blitzlitics
+## Run ANALYTIX
 
 With the environment activated:
 

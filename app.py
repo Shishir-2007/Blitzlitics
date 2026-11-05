@@ -27,7 +27,7 @@ from modules.report_generator import export_csv, export_excel, export_pdf
 
 
 st.set_page_config(
-    page_title="Blitzlitics | Business intelligence",
+    page_title="ANALYTIX | Business intelligence",
     page_icon="📊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -426,7 +426,7 @@ st.session_state.setdefault("active_source", "Sample data")
 
 with st.sidebar:
     st.markdown(
-        '<div class="brand-lockup"><div class="brand-mark">B</div><p class="brand-name">Blitzlitics</p></div>',
+        '<div class="brand-lockup"><div class="brand-mark">A</div><p class="brand-name">ANALYTIX</p></div>',
         unsafe_allow_html=True,
     )
     st.markdown('<p class="tagline">Clarity for every business decision.</p>', unsafe_allow_html=True)
@@ -462,7 +462,7 @@ if source == "Sample data":
     except (ValueError, OSError, pd.errors.ParserError) as error:
         st.error(f"Could not load the sample dataset: {error}")
         st.stop()
-    dataset_name = "Blitzlitics sample business"
+    dataset_name = "ANALYTIX sample business"
     dataset_id = "sample"
 elif uploaded_dataset is not None:
     try:
@@ -594,7 +594,7 @@ if raw_data.empty:
 if page == "Overview":
     show_page_header(
         "Business performance",
-        "Welcome to Blitzlitics",
+        "Welcome to ANALYTIX",
         "Your business at a glance. Every number reflects the selected dataset and filters.",
     )
     status_columns = st.columns([1.5, 1])
@@ -772,7 +772,7 @@ elif page == "Data Explorer":
             st.download_button(
                 "Download filtered data as CSV",
                 data=export_csv(view_data),
-                file_name="blitzlitics_filtered_data.csv",
+                file_name="analytix_filtered_data.csv",
                 mime="text/csv",
                 key="download_filtered_csv",
             )
@@ -810,7 +810,7 @@ else:
         ["Revenue by category"] if category_chart_available else [],
         default=["Revenue by category"] if category_chart_available else [],
     )
-    file_stem = re.sub(r"[^A-Za-z0-9_-]+", "_", dataset_name.strip()).strip("_") or "blitzlitics_report"
+    file_stem = re.sub(r"[^A-Za-z0-9_-]+", "_", dataset_name.strip()).strip("_") or "ANALYTIX_report"
     report_columns = st.columns(3)
     with report_columns[0]:
         with st.container(border=True):
