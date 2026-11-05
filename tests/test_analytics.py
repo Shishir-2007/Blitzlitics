@@ -9,7 +9,7 @@ from modules.analytics import (
     filter_data,
     filter_data_by_ranges,
 )
-from modules.charts import build_charts
+from modules.charts import build_charts, build_custom_chart, build_exploratory_charts
 from modules.data_loader import (
     apply_column_mappings,
     infer_column_mappings,
@@ -121,6 +121,80 @@ def test_csv_and_xlsx_uploads_load_in_memory():
     excel_file.seek(0)
     excel_file.name = "business.xlsx"
     assert analyze_business_data(load_uploaded_file(excel_file))["net_profit"] == 120
+
+
+def test_xls_uploads_load_in_memory():
+    import xlwt
+
+    from modules.data_loader import load_uploaded_file
+
+    workbook = xlwt.Workbook()
+    sheet = workbook.add_sheet("Business")
+    for column, value in enumerate(("revenue", "expenses")):
+        sheet.write(0, column, value)
+    sheet.write(1, 0, 200)
+    sheet.write(1, 1, 80)
+    excel_file = BytesIO()
+    workbook.save(excel_file)
+    excel_file.seek(0)
+    excel_file.name = "business.xls"
+    assert analyze_business_data(load_uploaded_file(excel_file))["net_profit"] == 120
+
+
+def test_uploaded_non_business_dataset_gets_generic_charts():
+    import pytest
+
+    data = pd.DataFrame(
+        {
+            "Segment": ["A", "A", "B"],
+            "Date": ["2025-01-01", "2025-02-01", "2025-03-01"],
+            "Spend": [10, 20, 30],
+            "Visits": [2, 4, 8],
+        }
+    )
+    charts = build_exploratory_charts(data)
+    titles = {title for title, _ in charts}
+    assert any("by Segment" in title for title in titles)
+    assert any(title.startswith("Distribution of") for title in titles)
+    assert any(title.startswith("Correlation heatmap") for title in titles)
+    assert any(title.startswith("Sum of Spend by Date") for title in titles)
+    assert any(
+        figure.data[0].type == "scatter" and figure.data[0].mode == "lines+markers"
+        for _, figure in charts
+    )
+
+    title, figure = build_custom_chart(data, "Scatter", "Spend", "Visits", color_column="Segment")
+    assert title == "Visits vs. Spend"
+    assert len(figure.data) == 2
+
+    with pytest.raises(ValueError, match="non-negative"):
+        build_custom_chart(
+            pd.DataFrame({"Segment": ["A", "B"], "Amount": [-1, 2]}),
+            "Pie",
+            "Segment",
+            "Amount",
+        )
+
+
+def test_upload_rejects_unsupported_and_empty_files():
+    import pytest
+
+    from modules.data_loader import load_uploaded_file
+
+    unsupported_file = BytesIO(b"data")
+    unsupported_file.name = "business.json"
+    with pytest.raises(ValueError, match="Unsupported file type"):
+        load_uploaded_file(unsupported_file)
+
+    empty_file = BytesIO(b"")
+    empty_file.name = "empty.csv"
+    with pytest.raises(ValueError, match="Could not read empty.csv"):
+        load_uploaded_file(empty_file)
+
+    invalid_encoding = BytesIO(b"\xff\xfe")
+    invalid_encoding.name = "invalid.csv"
+    with pytest.raises(ValueError, match="Could not read invalid.csv"):
+        load_uploaded_file(invalid_encoding)
 
 
 def test_corrupt_excel_upload_returns_a_clear_validation_error():
@@ -244,6 +318,8 @@ def test_all_dashboard_navigation_pages_render():
 
     app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
     assert not app.exception
+    assert app.file_uploader(key="dataset_upload_0")
+    assert any("Upload Your Dataset" in item.value for item in app.subheader)
     for page in (
         "Sales Analytics",
         "Product Performance",
@@ -255,3 +331,25 @@ def test_all_dashboard_navigation_pages_render():
     ):
         app.radio(key="active_page").set_value(page).run()
         assert not app.exception, f"{page} raised an app exception"
+
+
+def test_uploaded_dataset_renders_dashboard_and_explorer_analytics():
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10)
+    app.session_state["uploaded_dataset"] = {
+        "name": "segments.csv",
+        "content": b"Segment,Measure,Visits\nA,10,2\nA,20,4\nB,30,8\n",
+    }
+    app.session_state["active_source"] = "Uploaded data"
+    app.run()
+    assert not app.exception
+    assert any("Uploaded segments.csv" in item.value for item in app.success)
+    app.radio(key="active_page").set_value("Data Explorer").run()
+    assert not app.exception
+    assert any("Statistical summary" in item.value for item in app.subheader)
+    assert any("Customize a chart" in item.value for item in app.subheader)
+    app.button(key="remove_uploaded_dataset").click().run()
+    assert not app.exception
+    assert app.session_state["uploaded_dataset"] is None
+    assert app.session_state["active_source"] == "Sample data"

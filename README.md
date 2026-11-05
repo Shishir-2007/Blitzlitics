@@ -1,6 +1,6 @@
 # ANALYTIX
 
-ANALYTIX is a premium Streamlit business intelligence dashboard built with Pandas, NumPy, and Plotly. Its multi-page workspace includes a fictional sample dataset, CSV/Excel upload, data-quality checks, editable column mapping, interactive filters, grounded business insights, and CSV, Excel, and PDF reports.
+ANALYTIX is a premium Streamlit business intelligence dashboard built with Pandas, NumPy, and Plotly. Its multi-page workspace includes a fictional sample dataset, CSV/Excel uploads, data-quality checks, editable column mapping, interactive filters, grounded business insights, and CSV, Excel, and PDF reports.
 
 ## Requirements
 
@@ -39,12 +39,13 @@ Or without activation:
 .\.venv-compatible\Scripts\python.exe -m streamlit run app.py
 ```
 
-The app loads fictional sample data by default. Use **Data Explorer** to upload a CSV or XLSX workbook and map its business columns. The sidebar provides navigation, dataset selection, display currency, and global filters. The currency selector controls display formatting only; it does not convert values.
+The app loads fictional sample data by default. Use the **Upload Your Dataset** section above the dashboard to upload a CSV, XLSX, or XLS workbook from your computer; the uploaded file becomes the active data source. Use **Data Explorer** to preview rows, inspect inferred types and statistical summaries, map business columns, and explore automatically generated or customized charts. The sidebar provides navigation, dataset selection, display currency, and global filters. The currency selector controls display formatting only; it does not convert values.
 
 ## Explore and validate data
 
 - Navigate between **Overview**, **Sales Analytics**, **Product Performance**, **Financial Analytics**, **Data Explorer**, **Business Insights**, and **Reports**.
 - Confirm automatically suggested date, revenue, expenses, units sold, product, and category fields or map them to other source columns. Original headers and values are retained.
+- Explore general-purpose bar, line, pie, histogram, scatter, and correlation charts for uploaded data, including datasets that do not use business-specific column names. Customize chart type, axes, aggregation, and grouping.
 - Review detected column types, missing values (including blank cells), duplicate rows, invalid dates, and invalid numeric values.
 - Filter dashboard metrics and charts by date, categorical values, text search for high-cardinality fields, and numeric ranges.
 - Inspect, sort, choose columns, and download the filtered table as CSV.

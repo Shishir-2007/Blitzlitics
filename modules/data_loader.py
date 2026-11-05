@@ -4,6 +4,7 @@ from zipfile import BadZipFile
 
 import pandas as pd
 from openpyxl.utils.exceptions import InvalidFileException
+from xlrd.biffh import XLRDError
 
 from modules.analytics import COLUMN_ALIASES, find_column, _normalize_column
 
@@ -177,8 +178,8 @@ def load_sample_data(path):
 def load_uploaded_file(uploaded_file):
     """Read an uploaded CSV or Excel workbook and validate its headers."""
     suffix = Path(uploaded_file.name).suffix.lower()
-    if suffix not in {".csv", ".xlsx"}:
-        raise ValueError("Unsupported file type. Please choose a CSV or XLSX file.")
+    if suffix not in {".csv", ".xlsx", ".xls"}:
+        raise ValueError("Unsupported file type. Please choose a CSV, XLSX, or XLS file.")
     try:
         if suffix == ".csv":
             data = pd.read_csv(uploaded_file)
@@ -190,6 +191,8 @@ def load_uploaded_file(uploaded_file):
         OSError,
         pd.errors.EmptyDataError,
         pd.errors.ParserError,
+        UnicodeDecodeError,
+        XLRDError,
         ValueError,
     ) as error:
         raise ValueError(f"Could not read {uploaded_file.name}: {error}") from error

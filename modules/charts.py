@@ -2,6 +2,7 @@ import pandas as pd
 import plotly.express as px
 
 from modules.analytics import find_column, get_date_column
+from modules.data_loader import infer_column_types
 
 
 COLORS = ["#5b67e8", "#13a88a", "#f0a64a", "#253451", "#8a96ad", "#53a4d5"]
@@ -185,4 +186,161 @@ def build_charts(data, currency_symbol="$"):
         )
         figure.update_xaxes(showgrid=False, zeroline=False, linecolor="#edf0f5", tickfont=dict(color="#8792a5", size=10))
         figure.update_yaxes(gridcolor="#edf0f5", zeroline=False, linecolor="#edf0f5", tickfont=dict(color="#8792a5", size=10))
+    return charts
+
+
+def _exploratory_numeric(data, column):
+    return pd.to_numeric(data[column], errors="coerce").replace(
+        [float("inf"), float("-inf")], pd.NA
+    )
+
+
+def build_custom_chart(data, chart_type, x_column, y_column=None, aggregation="Sum", color_column=None):
+    """Build a user-configured chart from arbitrary dataset columns."""
+    if data.empty:
+        raise ValueError("The selected dataset has no rows to chart.")
+    if x_column not in data.columns:
+        raise ValueError("Choose a column that exists in the uploaded dataset.")
+    if y_column is not None and y_column not in data.columns:
+        raise ValueError("Choose a measure column that exists in the uploaded dataset.")
+    if color_column is not None and color_column not in data.columns:
+        raise ValueError("Choose a color column that exists in the uploaded dataset.")
+    if aggregation not in {"Sum", "Mean"}:
+        raise ValueError("Choose either Sum or Mean aggregation.")
+
+    x_label = str(x_column)
+    if chart_type == "Histogram":
+        values = _exploratory_numeric(data, x_column).dropna()
+        if values.empty:
+            raise ValueError(f"{x_label} does not contain usable numeric values.")
+        figure = px.histogram(values, x=x_label, nbins=30, color_discrete_sequence=[COLORS[0]])
+        title = f"Distribution of {x_label}"
+    elif chart_type == "Scatter":
+        if y_column is None or x_column == y_column:
+            raise ValueError("Scatter plots require two different numeric columns.")
+        values = pd.DataFrame(
+            {x_label: _exploratory_numeric(data, x_column), str(y_column): _exploratory_numeric(data, y_column)}
+        ).dropna()
+        if color_column is not None:
+            values[color_column] = data[color_column].astype("string").fillna("(Missing)")
+        if values.empty:
+            raise ValueError("The selected columns do not contain usable numeric pairs.")
+        figure = px.scatter(
+            values,
+            x=x_label,
+            y=str(y_column),
+            color=color_column,
+            color_discrete_sequence=COLORS,
+            opacity=0.75,
+        )
+        title = f"{y_column} vs. {x_label}"
+    elif chart_type in {"Bar", "Line", "Pie"}:
+        values = pd.DataFrame({"Name": data[x_column].astype("string").fillna("(Missing)")})
+        if y_column is None:
+            grouped = values["Name"].value_counts().rename("Value").rename_axis("Name").reset_index()
+            measure = "Records"
+        else:
+            values["Value"] = _exploratory_numeric(data, y_column)
+            values = values.dropna(subset=["Value"])
+            if values.empty:
+                raise ValueError(f"{y_column} does not contain usable numeric values.")
+            operation = "sum" if aggregation == "Sum" else "mean"
+            grouped = values.groupby("Name", as_index=False, dropna=False)["Value"].agg(operation)
+            measure = f"{aggregation} of {y_column}"
+        if grouped.empty:
+            raise ValueError(f"{x_label} does not contain values to chart.")
+
+        if chart_type == "Pie":
+            if (grouped["Value"] < 0).any():
+                raise ValueError("Pie charts require non-negative values; choose counts or another measure.")
+            if not grouped["Value"].gt(0).any():
+                raise ValueError("Pie charts need at least one positive value.")
+            grouped = grouped.nlargest(10, "Value")
+            figure = px.pie(grouped, names="Name", values="Value", color_discrete_sequence=COLORS)
+        else:
+            grouped = grouped.nlargest(20, "Value").sort_values("Value")
+            if chart_type == "Line":
+                figure = px.line(
+                    grouped.sort_values("Name"),
+                    x="Name",
+                    y="Value",
+                    markers=True,
+                    color_discrete_sequence=[COLORS[0]],
+                )
+            else:
+                figure = px.bar(
+                    grouped,
+                    x="Name",
+                    y="Value",
+                    color_discrete_sequence=[COLORS[0]],
+                )
+        figure.update_layout(xaxis_title=x_label, yaxis_title=measure)
+        title = f"{measure} by {x_label}"
+    else:
+        raise ValueError(f"Unsupported chart type: {chart_type}.")
+
+    figure.update_layout(
+        title=title,
+        template="plotly_white",
+        font=dict(
+            family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+            color="#45516a",
+            size=11,
+        ),
+        margin=dict(l=18, r=18, t=48, b=18),
+        paper_bgcolor="rgba(255,255,255,0)",
+        plot_bgcolor="rgba(255,255,255,0)",
+        showlegend=chart_type in {"Pie", "Scatter"},
+    )
+    return title, figure
+
+
+def build_exploratory_charts(data):
+    """Generate a small set of useful charts for any tabular dataset."""
+    if data.empty or data.shape[1] == 0:
+        return []
+
+    types = infer_column_types(data)
+    numeric_columns = [
+        column
+        for column, kind in types.items()
+        if kind.startswith("numeric") and _exploratory_numeric(data, column).notna().any()
+    ]
+    categorical_columns = [
+        column
+        for column, kind in types.items()
+        if kind in {"text", "boolean"} and data[column].notna().any()
+    ]
+    date_columns = [column for column, kind in types.items() if kind == "date/time"]
+    charts = []
+
+    if categorical_columns:
+        category = categorical_columns[0]
+        measure = numeric_columns[0] if numeric_columns else None
+        charts.append(build_custom_chart(data, "Bar", category, measure))
+        charts.append(build_custom_chart(data, "Pie", category))
+    line_column = (date_columns or categorical_columns)
+    if line_column and numeric_columns:
+        charts.append(build_custom_chart(data, "Line", line_column[0], numeric_columns[0]))
+    for column in numeric_columns[:3]:
+        charts.append(build_custom_chart(data, "Histogram", column))
+    if len(numeric_columns) >= 2:
+        charts.append(build_custom_chart(data, "Scatter", numeric_columns[0], numeric_columns[1]))
+        correlation = data[numeric_columns].apply(pd.to_numeric, errors="coerce").corr()
+        figure = px.imshow(
+            correlation,
+            text_auto=".2f",
+            zmin=-1,
+            zmax=1,
+            color_continuous_scale="RdBu",
+            origin="lower",
+            aspect="auto",
+        )
+        figure.update_layout(
+            title="Correlation heatmap",
+            template="plotly_white",
+            margin=dict(l=18, r=18, t=48, b=18),
+            paper_bgcolor="rgba(255,255,255,0)",
+        )
+        charts.append(("Correlation heatmap", figure))
     return charts

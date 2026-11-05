@@ -12,7 +12,7 @@ from modules.analytics import (
     filter_data_by_ranges,
     get_date_column,
 )
-from modules.charts import build_charts
+from modules.charts import build_charts, build_custom_chart, build_exploratory_charts
 from modules.data_loader import (
     FIELD_LABELS,
     apply_column_mappings,
@@ -266,8 +266,8 @@ def format_number(value):
     return f"{value:,.0f}" if float(value).is_integer() else f"{value:,.2f}"
 
 
-def _remember_upload():
-    uploaded_file = st.session_state.get("data_explorer_upload")
+def _remember_upload(widget_key):
+    uploaded_file = st.session_state.get(widget_key)
     if uploaded_file is not None:
         st.session_state["uploaded_dataset"] = {
             "name": uploaded_file.name,
@@ -275,6 +275,12 @@ def _remember_upload():
         }
         st.session_state["active_source"] = "Uploaded data"
         st.session_state["dataset_name"] = Path(uploaded_file.name).stem
+
+
+def _remove_upload():
+    st.session_state["uploaded_dataset"] = None
+    st.session_state["dataset_upload_version"] += 1
+    st.session_state["active_source"] = "Sample data"
 
 
 def _save_mapping(mapping_key, field, widget_key):
@@ -400,7 +406,111 @@ def render_chart_cards(charts, selected_titles, columns=2):
                         figure,
                         width="stretch",
                         config={"displaylogo": False, "responsive": True},
+                        key=f"business_chart_{title}",
                     )
+
+
+def render_exploratory_chart_cards(charts):
+    if not charts:
+        st.info("No automatic charts are available for this dataset. Add rows and numeric or categorical columns to explore.")
+        return
+    st.subheader("Automatic visualizations")
+    for index in range(0, len(charts), 2):
+        chart_columns = st.columns(min(2, len(charts) - index))
+        for offset, (title, figure) in enumerate(charts[index:index + 2]):
+            with chart_columns[offset]:
+                with st.container(border=True):
+                    st.subheader(title)
+                    st.plotly_chart(
+                        figure,
+                        width="stretch",
+                        config={"displaylogo": False, "responsive": True},
+                        key=f"exploratory_chart_{index + offset}_{title}",
+                    )
+
+
+def render_custom_chart_builder(data, key_prefix):
+    if data.empty or data.shape[1] == 0:
+        st.info("Add rows and columns to build a custom chart.")
+        return
+
+    types = infer_column_types(data)
+    numeric_columns = [column for column, kind in types.items() if kind.startswith("numeric")]
+    chart_types = ["Bar", "Line", "Pie"]
+    if numeric_columns:
+        chart_types.append("Histogram")
+    if len(numeric_columns) >= 2:
+        chart_types.append("Scatter")
+
+    st.subheader("Customize a chart")
+    chart_type = st.selectbox("Chart type", chart_types, key=f"{key_prefix}_chart_type")
+    axis_options = numeric_columns if chart_type in {"Histogram", "Scatter"} else list(data.columns)
+    controls = st.columns(3)
+    with controls[0]:
+        x_column = st.selectbox("Category or x-axis", axis_options, key=f"{key_prefix}_chart_x")
+    y_column = None
+    color_column = None
+    if chart_type != "Histogram":
+        if chart_type == "Scatter":
+            aggregation = "Sum"
+            y_options = [column for column in numeric_columns if column != x_column]
+            with controls[1]:
+                y_column = st.selectbox(
+                    "Y-axis",
+                    y_options,
+                    index=min(0, len(y_options) - 1),
+                    key=f"{key_prefix}_chart_y",
+                )
+            color_options = ["No grouping"] + [
+                column for column in data.columns if column not in numeric_columns and column != x_column
+            ]
+            with controls[2]:
+                color_choice = st.selectbox(
+                    "Color by",
+                    color_options,
+                    key=f"{key_prefix}_chart_color",
+                )
+            color_column = None if color_choice == "No grouping" else color_choice
+        else:
+            y_options = ["Count records"] + numeric_columns
+            with controls[1]:
+                y_choice = st.selectbox(
+                    "Measure",
+                    y_options,
+                    index=1 if numeric_columns else 0,
+                    key=f"{key_prefix}_chart_y",
+                )
+            y_column = None if y_choice == "Count records" else y_choice
+            if y_column is not None:
+                with controls[2]:
+                    aggregation = st.selectbox(
+                        "Aggregation",
+                        ["Sum", "Mean"],
+                        key=f"{key_prefix}_chart_aggregation",
+                    )
+            else:
+                aggregation = "Sum"
+    else:
+        aggregation = "Sum"
+
+    try:
+        _, figure = build_custom_chart(
+            data,
+            chart_type,
+            x_column,
+            y_column,
+            aggregation,
+            color_column,
+        )
+    except ValueError as error:
+        st.info(str(error))
+    else:
+        st.plotly_chart(
+            figure,
+            width="stretch",
+            config={"displaylogo": False, "responsive": True},
+            key=f"{key_prefix}_preview",
+        )
 
 
 def render_kpi(label, value, explanation, comparison=None, suffix="%"):
@@ -423,6 +533,7 @@ def render_kpi(label, value, explanation, comparison=None, suffix="%"):
 
 st.session_state.setdefault("active_page", "Overview")
 st.session_state.setdefault("active_source", "Sample data")
+st.session_state.setdefault("dataset_upload_version", 0)
 
 with st.sidebar:
     st.markdown(
@@ -454,6 +565,36 @@ with st.sidebar:
     )
     currency_symbol = CURRENCY_OPTIONS[currency_label]
 
+with st.container(border=True):
+    st.subheader("Upload Your Dataset")
+    st.caption(
+        "Upload a CSV or Excel file (.csv, .xlsx, .xls) to refresh this dashboard with your data. "
+        "Files stay in this app session."
+    )
+    upload_columns = st.columns([3, 1], vertical_alignment="bottom")
+    upload_widget_key = f"dataset_upload_{st.session_state['dataset_upload_version']}"
+    with upload_columns[0]:
+        st.file_uploader(
+            "Choose a CSV or Excel file",
+            type=["csv", "xlsx", "xls"],
+            key=upload_widget_key,
+            on_change=_remember_upload,
+            args=(upload_widget_key,),
+            help="The first row should contain column headers.",
+        )
+    with upload_columns[1]:
+        if st.session_state.get("uploaded_dataset") is not None:
+            st.button(
+                "Remove uploaded dataset",
+                key="remove_uploaded_dataset",
+                on_click=_remove_upload,
+                width="stretch",
+            )
+    if st.session_state.get("uploaded_dataset") is None:
+        st.info("No user dataset has been uploaded. Upload one here, or continue with the sample dataset.")
+    else:
+        st.caption(f"Selected file: **{st.session_state['uploaded_dataset']['name']}**")
+
 uploaded_dataset = st.session_state.get("uploaded_dataset")
 if source == "Sample data":
     try:
@@ -474,18 +615,21 @@ elif uploaded_dataset is not None:
         st.stop()
     dataset_name = Path(uploaded_dataset["name"]).stem
     dataset_id = sha256(uploaded_dataset["content"]).hexdigest()[:16]
+    st.success(
+        f"Uploaded {uploaded_dataset['name']} · {len(raw_data):,} rows · {len(raw_data.columns):,} columns"
+    )
 else:
     raw_data = None
     dataset_name = "Business report"
     dataset_id = "pending-upload"
 
-if raw_data is None and page != "Data Explorer":
+if raw_data is None:
     show_page_header(
         "Business intelligence",
         "Add a dataset to get started",
-        "Upload a CSV or Excel workbook from Data Explorer to explore your business performance.",
+        "Upload a CSV or Excel dataset above to explore your business performance.",
     )
-    st.info("Choose **Data Explorer** in the sidebar to upload a dataset, or switch to the sample data.")
+    st.info("Upload your dataset above, or switch to **Sample data** in the sidebar.")
     st.stop()
 
 if "dataset_name" not in st.session_state:
@@ -496,9 +640,6 @@ with st.sidebar:
         key="dataset_name",
         help="Used as the name in Excel and PDF reports.",
     )
-
-if raw_data is None:
-    raw_data = pd.DataFrame()
 
 auto_mappings, mapping_candidates = infer_column_mappings(raw_data)
 mapping_key = f"bizlytics_mappings_{dataset_id}"
@@ -514,18 +655,6 @@ if page == "Data Explorer":
         "Data Explorer",
         "Upload, validate, map, filter, and inspect the records behind your analysis.",
     )
-    with st.container(border=True):
-        st.subheader("Bring your data")
-        st.caption("Upload a CSV or Excel workbook (.xlsx). Your file stays in this app session and is not sent to an external service.")
-        st.file_uploader(
-            "Choose a CSV or XLSX file",
-            type=["csv", "xlsx"],
-            key="data_explorer_upload",
-            on_change=_remember_upload,
-            help="Use a header row. You can map date, revenue, expenses, units, product, and category columns.",
-        )
-        if uploaded_dataset is not None:
-            st.caption(f"Loaded: {uploaded_dataset['name']} · {len(raw_data):,} records")
 
     with st.expander("Confirm or map columns", expanded=not bool(auto_mappings)):
         st.caption(
@@ -566,6 +695,7 @@ schema = pd.DataFrame(
     [
         {
             "Column": str(column),
+            "Pandas dtype": str(data[column].dtype),
             "Detected type": kind,
             "Non-empty values": int(data[column].notna().sum()),
             "Missing values": int(data[column].isna().sum()),
@@ -584,6 +714,9 @@ metrics = analyze_business_data(filtered_data)
 filtered_quality = inspect_data_quality(filtered_data)
 insights = generate_insights(filtered_data, metrics, filtered_quality, currency_symbol)
 charts = build_charts(filtered_data, currency_symbol)
+exploratory_charts = (
+    build_exploratory_charts(filtered_data) if source == "Uploaded data" else []
+)
 comparisons = metrics.get("period_comparisons", {})
 
 if source == "Sample data":
@@ -667,6 +800,8 @@ if page == "Overview":
     if leaders:
         st.caption("  ·  ".join(leaders))
     render_chart_cards(charts, {"Revenue trend", "Revenue and expenses"})
+    if source == "Uploaded data":
+        render_exploratory_chart_cards(exploratory_charts)
     with st.expander("Data quality"):
         render_quality(quality)
 
@@ -728,9 +863,36 @@ elif page == "Data Explorer":
     count_columns[0].metric("Source records", f"{len(data):,}")
     count_columns[1].metric("Filtered records", f"{len(filtered_data):,}")
     count_columns[2].metric("Columns", f"{len(data.columns):,}")
-    with st.expander("Data quality and detected schema", expanded=False):
+    st.subheader("Dataset preview")
+    st.dataframe(
+        data.head(10),
+        width="stretch",
+        hide_index=True,
+    )
+    detected_types = infer_column_types(data)
+    numerical_columns = [column for column, kind in detected_types.items() if kind.startswith("numeric")]
+    categorical_columns = [
+        column for column, kind in detected_types.items() if kind in {"text", "boolean"}
+    ]
+    st.caption(
+        f"Numerical columns: {', '.join(map(str, numerical_columns)) or 'None detected'}"
+        f" · Categorical columns: {', '.join(map(str, categorical_columns)) or 'None detected'}"
+    )
+    with st.expander("Data quality and detected schema", expanded=True):
         render_quality(quality)
         st.dataframe(schema, width="stretch", hide_index=True)
+
+    st.subheader("Statistical summary")
+    if data.empty:
+        st.info("This dataset has column headers but no data rows to summarize.")
+    else:
+        st.dataframe(
+            data.describe(include="all").transpose(),
+            width="stretch",
+        )
+    if source == "Uploaded data":
+        render_exploratory_chart_cards(exploratory_charts)
+        render_custom_chart_builder(filtered_data, f"custom_chart_{dataset_id}")
 
     if filtered_data.empty:
         st.info("No records match the selected filters.")
