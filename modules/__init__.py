@@ -1,1 +1,1 @@
-"""Reusable data-loading, analytics, and charting functions for Bizlytics."""
+"""Reusable data-loading, analytics, and charting functions for Blitzlitics."""

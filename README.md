@@ -1,6 +1,6 @@
-# Bizlytics
+# Blitzlitics
 
-Bizlytics is a Streamlit dashboard for exploring business performance using Pandas, NumPy, and Plotly. It includes a fictional sample business dataset, CSV/Excel upload, data-quality checks, editable column mapping, interactive filtering, rule-based insights, and CSV, Excel, and PDF reports.
+Blitzlitics is a Streamlit business intelligence dashboard built with Pandas, NumPy, and Plotly. Its premium, multi-page workspace includes a fictional sample dataset, CSV/Excel upload, data-quality checks, editable column mapping, interactive filters, grounded business insights, and CSV, Excel, and PDF reports.
 
 ## Requirements
 
@@ -25,7 +25,7 @@ If PowerShell prevents environment activation, use the environment's Python dire
 .\.venv-compatible\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
-## Run Bizlytics
+## Run Blitzlitics
 
 With the environment activated:
 
@@ -39,19 +39,21 @@ Or without activation:
 .\.venv-compatible\Scripts\python.exe -m streamlit run app.py
 ```
 
-The app loads fictional sample data by default. Choose **Upload a file** in the sidebar for a CSV or XLSX workbook. The currency selector controls display formatting only; it does not convert values.
+The app loads fictional sample data by default. Use **Data Explorer** to upload a CSV or XLSX workbook and map its business columns. The sidebar provides navigation, dataset selection, display currency, and global filters. The currency selector controls display formatting only; it does not convert values.
 
 ## Explore and validate data
 
-- Confirm automatically suggested date, revenue, expenses, product, and category fields or map them to other source columns. Original headers and values are retained.
+- Navigate between **Overview**, **Sales Analytics**, **Product Performance**, **Financial Analytics**, **Data Explorer**, **Business Insights**, and **Reports**.
+- Confirm automatically suggested date, revenue, expenses, units sold, product, and category fields or map them to other source columns. Original headers and values are retained.
 - Review detected column types, missing values (including blank cells), duplicate rows, invalid dates, and invalid numeric values.
 - Filter dashboard metrics and charts by date, categorical values, text search for high-cardinality fields, and numeric ranges.
 - Inspect, sort, choose columns, and download the filtered table as CSV.
-- Read rule-based comparisons for revenue, monthly profit margins, expenses, leading revenue categories, and data-quality warnings. Insights describe available data and do not forecast.
+- Review revenue, expenses, profit, units sold, average revenue, and profit margin; month-over-month comparisons appear only when the selected data supports them.
+- Read rule-based comparisons for revenue, monthly profit margins, expenses, leading products and categories, and data-quality warnings. Insights describe available data and do not forecast.
 
 ## Reports and exports
 
-The **Insights & reports** page offers:
+The **Reports** page offers:
 
 - UTF-8 CSV export of filtered records.
 - An Excel workbook with records, summary metrics, insights, and a data-quality sheet.

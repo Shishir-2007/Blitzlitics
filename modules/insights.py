@@ -139,6 +139,60 @@ def generate_insights(data, metrics=None, quality=None, currency_symbol="$"):
                 }
             )
 
+    product_column = find_column(data, "product")
+    if revenue_column and product_column:
+        product = metrics.get("best_product")
+        if product:
+            insights.append(
+                {
+                    "type": "positive",
+                    "title": "Leading product",
+                    "detail": (
+                        f"{product[0]} generated the most revenue "
+                        f"({currency_symbol}{product[1]:,.2f}) in the selected data."
+                    ),
+                }
+            )
+            insights.append(
+                {
+                    "type": "neutral",
+                    "title": "Action to consider",
+                    "detail": (
+                        f"Review pricing and customer demand for {product[0]} before making "
+                        "product investment decisions; it is the current revenue leader."
+                    ),
+                }
+            )
+
+    if revenue_column and expense_column and category_column:
+        category_totals = pd.DataFrame(
+            {
+                "category": data[category_column].astype("string"),
+                "revenue": pd.to_numeric(data[revenue_column], errors="coerce"),
+                "expenses": pd.to_numeric(data[expense_column], errors="coerce"),
+            }
+        ).dropna()
+        if not category_totals.empty:
+            category_totals = category_totals.groupby("category")[["revenue", "expenses"]].sum()
+            loss_making = category_totals.loc[
+                category_totals["expenses"] > category_totals["revenue"]
+            ].sort_values("expenses", ascending=False)
+            if not loss_making.empty:
+                category = str(loss_making.index[0])
+                revenue = float(loss_making.iloc[0]["revenue"])
+                expenses = float(loss_making.iloc[0]["expenses"])
+                insights.append(
+                    {
+                        "type": "warning",
+                        "title": "Category needs attention",
+                        "detail": (
+                            f"{category} has {currency_symbol}{expenses:,.2f} in expenses "
+                            f"against {currency_symbol}{revenue:,.2f} in revenue in the selected "
+                            "records. Review its costs and pricing."
+                        ),
+                    }
+                )
+
     quality = quality or {}
     issue_count = (
         sum(quality.get("missing_values", {}).values())

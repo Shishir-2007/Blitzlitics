@@ -12,6 +12,7 @@ FIELD_LABELS = {
     "date": "Date",
     "revenue": "Revenue",
     "expenses": "Expenses",
+    "units": "Units sold",
     "product": "Product",
     "category": "Category",
 }
@@ -70,11 +71,11 @@ def infer_column_types(data):
     date_column = find_column(data, "date")
     numeric_fields = {
         source for field, source in data.attrs.get("bizlytics_column_mapping", {}).items()
-        if field in {"revenue", "expenses"} and source is not None
+        if field in {"revenue", "expenses", "units"} and source is not None
     }
     numeric_fields.update(
         _normalize_column(alias)
-        for field in ("revenue", "expenses")
+        for field in ("revenue", "expenses", "units")
         for alias in COLUMN_ALIASES[field]
     )
     for column in data.columns:
@@ -135,7 +136,7 @@ def inspect_data_quality(data):
             numeric_columns.add(column)
     numeric_columns.update(
         source for field, source in mappings.items()
-        if field in {"revenue", "expenses"} and source is not None
+        if field in {"revenue", "expenses", "units"} and source is not None
     )
     for column in numeric_columns:
         values = data[column]

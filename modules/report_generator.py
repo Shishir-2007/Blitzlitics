@@ -38,6 +38,8 @@ def export_excel(data, dataset_name, metrics, insights, quality):
             {"Item": "Revenue", "Value": metrics.get("total_revenue")},
             {"Item": "Expenses", "Value": metrics.get("total_expenses")},
             {"Item": "Net profit", "Value": metrics.get("net_profit")},
+            {"Item": "Units sold", "Value": metrics.get("total_units_sold")},
+            {"Item": "Average revenue per record", "Value": metrics.get("average_revenue")},
             {"Item": "Profit margin (%)", "Value": metrics.get("profit_margin")},
             {"Item": "Revenue growth (%)", "Value": metrics.get("revenue_growth")},
         ]
@@ -131,7 +133,7 @@ def export_pdf(data, dataset_name, metrics, insights, quality, currency_symbol="
         leftMargin=0.65 * inch,
         topMargin=0.65 * inch,
         bottomMargin=0.65 * inch,
-        title=f"Bizlytics report - {dataset_name}",
+        title=f"Blitzlitics report - {dataset_name}",
     )
     styles = getSampleStyleSheet()
     styles.add(ParagraphStyle(name="BrandTitle", parent=styles["Title"], textColor=colors.HexColor("#102a43")))
@@ -139,7 +141,7 @@ def export_pdf(data, dataset_name, metrics, insights, quality, currency_symbol="
     styles.add(ParagraphStyle(name="SmallBody", parent=styles["BodyText"], fontSize=8, leading=11, alignment=TA_LEFT))
 
     elements = [
-        Paragraph("Bizlytics", styles["BrandTitle"]),
+        Paragraph("Blitzlitics", styles["BrandTitle"]),
         Paragraph(f"Business performance report: {escape(str(dataset_name))}", styles["Heading2"]),
         Paragraph(f"Records included: {len(data):,}", styles["BodyText"]),
     ]
@@ -168,6 +170,8 @@ def export_pdf(data, dataset_name, metrics, insights, quality, currency_symbol="
         ["Revenue", currency(metrics.get("total_revenue"))],
         ["Expenses", currency(metrics.get("total_expenses"))],
         ["Net profit", currency(metrics.get("net_profit"))],
+        ["Units sold", f"{metrics['total_units_sold']:,.0f}" if metrics.get("total_units_sold") is not None else "Unavailable"],
+        ["Average revenue per record", currency(metrics.get("average_revenue"))],
         ["Profit margin", f"{metrics['profit_margin']:.1f}%" if metrics.get("profit_margin") is not None else "Unavailable"],
         ["Revenue growth", f"{metrics['revenue_growth']:+.1f}%" if metrics.get("revenue_growth") is not None else "Unavailable"],
     ]

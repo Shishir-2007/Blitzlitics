@@ -1,4 +1,5 @@
 from io import BytesIO
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -170,11 +171,48 @@ def test_sample_charts_and_insights_use_available_data():
     sample = load_sample_data("data/sample_business_data.csv")
     metrics = analyze_business_data(sample)
     quality = inspect_data_quality(sample)
-    assert len(build_charts(sample)) == 5
+    charts = build_charts(sample)
+    chart_titles = {title for title, _ in charts}
+    assert {
+        "Revenue trend",
+        "Revenue and expenses",
+        "Profit trend",
+        "Revenue by category",
+        "Revenue by product",
+        "Expenses by category",
+        "Units sold over time",
+        "Units sold by product",
+    }.issubset(chart_titles)
     titles = {item["title"] for item in generate_insights(sample, metrics, quality)}
     assert "Revenue movement" in titles
     assert "Profit margin movement" in titles
     assert "Largest revenue category" in titles
+    assert "Leading product" in titles
+
+
+def test_units_average_revenue_and_period_comparisons_use_real_columns():
+    sample = load_sample_data("data/sample_business_data.csv")
+    result = analyze_business_data(sample)
+    assert result["total_units_sold"] == 780
+    assert np.isclose(result["average_revenue"], 160010 / 36)
+    assert result["period_comparisons"]["revenue"] == result["revenue_growth"]
+    assert result["period_comparisons"]["units"] == 100 / 11
+    assert result["period_comparisons"]["expenses"] is not None
+    assert result["period_comparisons"]["profit"] is not None
+    assert result["period_comparisons"]["margin"] is not None
+
+
+def test_period_comparisons_are_unavailable_without_multiple_months():
+    result = analyze_business_data(
+        pd.DataFrame(
+            {
+                "date": ["2025-01-03", "2025-01-15"],
+                "revenue": [100, 150],
+                "expenses": [40, 50],
+            }
+        )
+    )
+    assert result["period_comparisons"] == {}
 
 
 def test_csv_excel_and_pdf_exports_are_readable():
@@ -194,6 +232,26 @@ def test_csv_excel_and_pdf_exports_are_readable():
     assert len(csv_result) == 2
     excel_result = pd.ExcelFile(BytesIO(export_excel(data, "Test business", metrics, insights, quality)))
     assert {"Records", "Summary", "Insights", "Data quality"}.issubset(excel_result.sheet_names)
+    summary = pd.read_excel(BytesIO(export_excel(data, "Test business", metrics, insights, quality)), sheet_name="Summary")
+    assert {"Units sold", "Average revenue per record"}.issubset(set(summary["Item"]))
     pdf_result = export_pdf(data, "Test business", metrics, insights, quality, "$", ["category_revenue"])
     assert pdf_result.startswith(b"%PDF")
     assert len(pdf_result) > 500
+
+
+def test_all_dashboard_navigation_pages_render():
+    from streamlit.testing.v1 import AppTest
+
+    app = AppTest.from_file(Path(__file__).resolve().parents[1] / "app.py", default_timeout=10).run()
+    assert not app.exception
+    for page in (
+        "Sales Analytics",
+        "Product Performance",
+        "Financial Analytics",
+        "Data Explorer",
+        "Business Insights",
+        "Reports",
+        "Overview",
+    ):
+        app.radio(key="active_page").set_value(page).run()
+        assert not app.exception, f"{page} raised an app exception"
