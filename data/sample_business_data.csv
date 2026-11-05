@@ -1,0 +1,37 @@
+date,product,category,units_sold,revenue,expenses
+2025-01-05,Starter Kit,Accessories,18,1440,820
+2025-01-12,Pro Plan,Subscriptions,12,2400,910
+2025-01-20,Consulting,Services,6,3300,1580
+2025-02-04,Starter Kit,Accessories,21,1680,940
+2025-02-13,Pro Plan,Subscriptions,14,2800,1020
+2025-02-24,Consulting,Services,7,3850,1740
+2025-03-03,Starter Kit,Accessories,24,1920,1010
+2025-03-15,Pro Plan,Subscriptions,16,3200,1160
+2025-03-26,Consulting,Services,8,4400,1950
+2025-04-06,Starter Kit,Accessories,25,2000,1080
+2025-04-14,Pro Plan,Subscriptions,18,3600,1240
+2025-04-25,Consulting,Services,9,4950,2130
+2025-05-02,Starter Kit,Accessories,28,2240,1190
+2025-05-17,Pro Plan,Subscriptions,19,3800,1320
+2025-05-28,Consulting,Services,10,5500,2310
+2025-06-07,Starter Kit,Accessories,30,2400,1280
+2025-06-16,Pro Plan,Subscriptions,21,4200,1440
+2025-06-27,Consulting,Services,11,6050,2490
+2025-07-04,Starter Kit,Accessories,32,2560,1350
+2025-07-15,Pro Plan,Subscriptions,23,4600,1550
+2025-07-26,Consulting,Services,12,6600,2670
+2025-08-03,Starter Kit,Accessories,34,2720,1430
+2025-08-14,Pro Plan,Subscriptions,25,5000,1680
+2025-08-25,Consulting,Services,13,7150,2860
+2025-09-05,Starter Kit,Accessories,36,2880,1510
+2025-09-18,Pro Plan,Subscriptions,27,5400,1810
+2025-09-29,Consulting,Services,14,7700,3050
+2025-10-04,Starter Kit,Accessories,39,3120,1640
+2025-10-16,Pro Plan,Subscriptions,29,5800,1930
+2025-10-27,Consulting,Services,15,8250,3230
+2025-11-06,Starter Kit,Accessories,41,3280,1720
+2025-11-17,Pro Plan,Subscriptions,31,6200,2050
+2025-11-28,Consulting,Services,16,8800,3410
+2025-12-05,Starter Kit,Accessories,44,3520,1850
+2025-12-16,Pro Plan,Subscriptions,34,6800,2220
+2025-12-27,Consulting,Services,18,9900,3780
